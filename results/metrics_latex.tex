@@ -1,0 +1,21 @@
+\begin{table}[h]
+\centering
+\caption{Performance metrics on CartPole-v1 over 5 seeds}
+\label{tab:metrics}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Algorithm & Final Eval $\bar{R}$ & $\sigma$ & AULC$_{1M}$ & AULC$_{200k}$ & $t_{475}$ (steps) & Solve Rate \\
+\midrule
+PPO_full & 347.342 & 43.994 & 0.692 & 0.352 & 321126.400 & 1.000 \\
+PPO_no_clip & 426.150 & 76.813 & 0.720 & 0.262 & 211353.600 & 1.000 \\
+PPO_lambda0 & 500.000 & 0.000 & 0.852 & 0.383 & 217088.000 & 1.000 \\
+PPO_no_adv_norm & 485.890 & 23.735 & 0.875 & 0.497 & 201113.600 & 1.000 \\
+A2C & 491.970 & 5.216 & 0.947 & 0.797 & 105629.200 & 1.000 \\
+REINFORCE & 494.402 & 1.845 & 0.895 & 0.623 & 266653.600 & 1.000 \\
+AC & 122.790 & 66.604 & 0.298 & 0.186 & 412955.500 & 0.400 \\
+DQN & 495.928 & 7.950 & 0.722 & 0.103 & 415389.000 & 1.000 \\
+\bottomrule
+\end{tabular}
+
+\end{table}

@@ -19,10 +19,11 @@ import sys
 from pathlib import Path
 
 EXPERIMENTS = [
-    ("configs/ppo_full.json",        "ppo_full"),
-    ("configs/ppo_no_clip.json",     "ppo_no_clip"),
-    ("configs/ppo_lambda0.json",     "ppo_lambda0"),
-    ("configs/ppo_no_adv_norm.json", "ppo_no_adv_norm"),
+    # ("configs/ppo_full.json",        "ppo_full"),
+    # ("configs/ppo_no_clip.json",     "ppo_no_clip"),
+    # ("configs/ppo_lambda0.json",     "ppo_lambda0"),
+    # ("configs/ppo_no_adv_norm.json", "ppo_no_adv_norm"),
+    ("configs/ppo_tuned.json", "ppo_tuned"),
 ]
 
 DEFAULT_SEEDS = [0, 1, 2, 3, 4]
