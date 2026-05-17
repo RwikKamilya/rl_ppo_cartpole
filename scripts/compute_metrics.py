@@ -1,5 +1,5 @@
 """
-compute_metrics.py – Compute summary metrics for all algorithms and save
+compute_metrics.py – Compute summary metrics for the latest PPO study and save
                      metrics.csv and metrics_latex.tex.
 
 Usage:
@@ -10,10 +10,11 @@ Output:
     results/metrics_latex.tex
 
 Algorithm sources:
-    PPO variants:  results/<variant>/seed_*/eval.csv + train.csv
+    PPO variants:  latest results/ablation_study/<study>/{ablations,final}/...
     Baselines:     previous_results/<name>.npz  (A2/A3 format)
 
-Missing sources are skipped with a warning.
+The script ignores stale top-level PPO folders and uses only the latest staged
+study outputs. Missing sources are skipped with a warning.
 """
 
 import sys
@@ -31,19 +32,41 @@ from rl_a4.metrics import (
 )
 
 
+def find_latest_study_root(studies_dir: Path) -> Path:
+    candidates = []
+    for child in studies_dir.iterdir():
+        if not child.is_dir():
+            continue
+        if (child / "ablations").exists() or (child / "final").exists():
+            candidates.append(child)
+    if not candidates:
+        raise FileNotFoundError(
+            f"No staged study found under {studies_dir}. "
+            "Run `python scripts/run_ablation_study.py --stage all` first."
+        )
+    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
 def main():
     root = Path(__file__).resolve().parent.parent
     results_dir = root / "results"
+    studies_dir = results_dir / "ablation_study"
+    study_root = find_latest_study_root(studies_dir)
+    ablations_dir = study_root / "ablations"
+    final_dir = study_root / "final"
     prev_dir = root / "previous_results"
 
     rows = []
+    print(f"Using latest study: {study_root}")
 
     # ── PPO variants ────────────────────────────────────────────────────────
     ppo_variants = [
-        ("PPO_full",        results_dir / "ppo_full"),
-        ("PPO_no_clip",     results_dir / "ppo_no_clip"),
-        ("PPO_lambda0",     results_dir / "ppo_lambda0"),
-        ("PPO_no_adv_norm", results_dir / "ppo_no_adv_norm"),
+        ("PPO_full", final_dir / "ppo_full"),
+        ("PPO_tuned", final_dir / "ppo_tuned"),
+        ("PPO_no_clip", ablations_dir / "ppo_no_clip"),
+        ("PPO_lambda0", ablations_dir / "ppo_lambda0"),
+        ("PPO_no_adv_norm", ablations_dir / "ppo_no_adv_norm"),
+        ("PPO_single_epoch", ablations_dir / "ppo_single_epoch"),
     ]
     for name, vdir in ppo_variants:
         if not vdir.exists() or not list(vdir.glob("seed_*/eval.csv")):
@@ -110,6 +133,7 @@ def main():
     print("="*60)
 
     ppo_row = df[df["algorithm"] == "PPO_full"]
+    tuned_row = df[df["algorithm"] == "PPO_tuned"]
     if not ppo_row.empty:
         r = ppo_row.iloc[0]
         t_mean = r.get("t_475_mean", float("nan"))
@@ -126,6 +150,16 @@ def main():
         print(f"  Sentence: \"PPO reaches the 475 threshold after "
               f"{t_mean:.0f}±{t_std:.0f} steps and solves CartPole "
               f"in {int(round(solve*n))}/{n} seeds.\"")
+
+    if not tuned_row.empty:
+        r = tuned_row.iloc[0]
+        print(f"\nPPO_tuned:")
+        print(f"  t_475        = {r.get('t_475_mean', float('nan')):.0f} ± "
+              f"{r.get('t_475_std', float('nan')):.0f} steps")
+        print(f"  solve_rate   = {r.get('solve_rate', float('nan')):.1%}")
+        print(f"  AULC_200k    = {r.get('AULC_200k', float('nan')):.3f}")
+        print(f"  final_eval_R = {r.get('final_eval_return_mean', float('nan')):.1f} "
+              f"± {r.get('final_eval_return_std', float('nan')):.1f}")
 
     # Best by AULC_200k
     if "AULC_200k" in df.columns:

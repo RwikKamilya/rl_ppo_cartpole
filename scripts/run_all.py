@@ -1,16 +1,18 @@
 """
-run_all.py – Launch all PPO experiments (full + ablations) sequentially.
+run_all.py – Launch the core PPO experiments sequentially.
 
 Usage:
-    python scripts/run_all.py                  # all 4 variants, 5 seeds each
+    python scripts/run_all.py                  # baseline + 4 ablations + tuned
     python scripts/run_all.py --seeds 0 1 2    # subset of seeds
     python scripts/run_all.py --smoke          # quick smoke test (5000 steps)
 
 Experiments:
-    ppo_full        – baseline PPO-clip with all tricks
-    ppo_no_clip     – unclipped surrogate (tests clip importance)
-    ppo_lambda0     – gae_lambda=0.0 (tests GAE importance)
-    ppo_no_adv_norm – no advantage normalisation
+    ppo_full         – baseline PPO-clip with all tricks
+    ppo_no_clip      – unclipped surrogate (tests clip importance)
+    ppo_lambda0      – gae_lambda=0.0 (tests GAE importance)
+    ppo_no_adv_norm  – no advantage normalisation
+    ppo_single_epoch – single update epoch per rollout
+    ppo_tuned        – final tuned PPO config for the comparison run
 """
 
 import argparse
@@ -19,11 +21,12 @@ import sys
 from pathlib import Path
 
 EXPERIMENTS = [
-    # ("configs/ppo_full.json",        "ppo_full"),
-    # ("configs/ppo_no_clip.json",     "ppo_no_clip"),
-    # ("configs/ppo_lambda0.json",     "ppo_lambda0"),
-    # ("configs/ppo_no_adv_norm.json", "ppo_no_adv_norm"),
-    ("configs/ppo_tuned.json", "ppo_tuned"),
+    ("configs/ppo_full.json",        "ppo_full"),
+    ("configs/ppo_no_clip.json",     "ppo_no_clip"),
+    ("configs/ppo_lambda0.json",     "ppo_lambda0"),
+    ("configs/ppo_no_adv_norm.json", "ppo_no_adv_norm"),
+    ("configs/ppo_single_epoch.json", "ppo_single_epoch"),
+    ("configs/ppo_tuned.json",       "ppo_tuned"),
 ]
 
 DEFAULT_SEEDS = [0, 1, 2, 3, 4]

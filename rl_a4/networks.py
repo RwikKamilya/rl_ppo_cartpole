@@ -43,23 +43,38 @@ class ActorCriticNet(nn.Module):
         Width of the two shared hidden layers. Default: 64.
     """
 
-    def __init__(self, obs_dim: int, num_actions: int, hidden_dim: int = 64):
+    def __init__(
+        self,
+        obs_dim: int,
+        num_actions: int,
+        hidden_dim: int = 64,
+        use_orthogonal_init: bool = True,
+    ):
         super().__init__()
+        if use_orthogonal_init:
+            first = _layer_init(nn.Linear(obs_dim, hidden_dim))
+            second = _layer_init(nn.Linear(hidden_dim, hidden_dim))
+            actor_head = _layer_init(nn.Linear(hidden_dim, num_actions), std=0.01)
+            critic_head = _layer_init(nn.Linear(hidden_dim, 1), std=1.0)
+        else:
+            first = nn.Linear(obs_dim, hidden_dim)
+            second = nn.Linear(hidden_dim, hidden_dim)
+            actor_head = nn.Linear(hidden_dim, num_actions)
+            critic_head = nn.Linear(hidden_dim, 1)
 
         # ── Shared backbone ────────────────────────────────────────────────
         self.backbone = nn.Sequential(
-            _layer_init(nn.Linear(obs_dim, hidden_dim)),
+            first,
             nn.Tanh(),
-            _layer_init(nn.Linear(hidden_dim, hidden_dim)),
+            second,
             nn.Tanh(),
         )
 
         # ── Actor head (policy logits) ─────────────────────────────────────
-        # Small init std keeps initial policy close to uniform.
-        self.actor_head = _layer_init(nn.Linear(hidden_dim, num_actions), std=0.01)
+        self.actor_head = actor_head
 
         # ── Critic head (state-value) ──────────────────────────────────────
-        self.critic_head = _layer_init(nn.Linear(hidden_dim, 1), std=1.0)
+        self.critic_head = critic_head
 
     # ------------------------------------------------------------------
     def forward(self, x: torch.Tensor):

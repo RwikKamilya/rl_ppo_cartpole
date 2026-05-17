@@ -65,6 +65,7 @@ class PPOAgent:
         ent_coef: float = 0.01,
         max_grad_norm: float = 0.5,
         use_clip: bool = True,
+        use_orthogonal_init: bool = True,
         device: torch.device = torch.device("cpu"),
     ):
         self.clip_coef = clip_coef
@@ -74,7 +75,12 @@ class PPOAgent:
         self.use_clip = use_clip
         self.device = device
 
-        self.net = ActorCriticNet(obs_dim, num_actions, hidden_dim).to(device)
+        self.net = ActorCriticNet(
+            obs_dim,
+            num_actions,
+            hidden_dim,
+            use_orthogonal_init=use_orthogonal_init,
+        ).to(device)
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=lr, eps=1e-5)
 
     # ------------------------------------------------------------------

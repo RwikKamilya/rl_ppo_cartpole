@@ -64,6 +64,7 @@ DEFAULT_CONFIG = {
     "ent_coef": 0.01,
     "max_grad_norm": 0.5,
     "hidden_dim": 64,
+    "use_orthogonal_init": True,
     "normalize_advantages": True,
     "use_clip": True,          # False → PPO_no_clip ablation
     "eval_interval": 10_000,
@@ -124,6 +125,7 @@ def train(config: dict, seed: int) -> None:
         ent_coef=config["ent_coef"],
         max_grad_norm=config["max_grad_norm"],
         use_clip=config["use_clip"],
+        use_orthogonal_init=config["use_orthogonal_init"],
         device=device,
     )
 
@@ -173,8 +175,18 @@ def train(config: dict, seed: int) -> None:
             action, log_prob, value = agent.collect_step(obs)
             next_obs, reward, terminated, truncated, _ = env.step(action)
             done = float(terminated or truncated)
+            next_value = 0.0 if terminated else agent.get_value(next_obs)
 
-            buffer.add(obs, action, float(reward), done, log_prob, value)
+            buffer.add(
+                obs,
+                action,
+                float(reward),
+                done,
+                float(terminated),
+                log_prob,
+                value,
+                next_value,
+            )
             obs = next_obs
             global_step += 1
             ep_return += reward
@@ -187,14 +199,8 @@ def train(config: dict, seed: int) -> None:
                 ep_return = 0.0
                 obs, _ = env.reset()
 
-        # Bootstrap value for the final state
-        if not (terminated or truncated):
-            last_value = agent.get_value(obs)
-        else:
-            last_value = 0.0
-
         # ── GAE + Returns ──────────────────────────────────────────────────
-        buffer.compute_gae_and_returns(last_value)
+        buffer.compute_gae_and_returns()
 
         # ── PPO Update ────────────────────────────────────────────────────
         update_count += 1

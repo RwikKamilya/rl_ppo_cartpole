@@ -7,17 +7,16 @@ Key design decisions
 * The buffer stores a fixed-length trajectory of `rollout_steps` transitions,
   then GAE + returns are computed once before the PPO update.
 * GAE (Schulman et al., 2015):
-      δ_t = r_t + γ · V(s_{t+1}) · (1-done_t) − V(s_t)
-      A_t = Σ_{l≥0} (γλ)^l · δ_{t+l}
+      δ_t = r_t + γ · V(s_{t+1}) · (1-terminal_t) − V(s_t)
+      A_t = δ_t + γλ · (1-episode_end_t) · A_{t+1}
   where λ=0 gives one-step TD (low variance but biased) and λ=1 gives
   full Monte-Carlo advantage (unbiased but high variance). λ=0.95 strikes a
   practical balance.
 * Returns are R_t = A_t + V(s_t), used as regression targets for the critic.
-* Terminated vs Truncated: Gymnasium separates `terminated` (episode ended by
-  the environment) from `truncated` (episode cut off by a time-limit). For the
-  done mask we use `terminated OR truncated` so that value bootstrapping is
-  disabled at both kinds of episode boundaries. (CartPole only truncates at
-  500 steps, it never truly terminates except by falling, but we handle both.)
+* Terminated vs Truncated: Gymnasium separates `terminated` (true MDP terminal)
+  from `truncated` (time-limit cutoff). PPO should bootstrap through truncation
+  but must still stop the GAE recursion across the reset boundary. We therefore
+  store both the "episode ended" flag and the "true terminal" flag separately.
 """
 
 from __future__ import annotations
@@ -62,9 +61,11 @@ class RolloutBuffer:
         self.obs = np.zeros((rollout_steps, obs_dim), dtype=np.float32)
         self.actions = np.zeros(rollout_steps, dtype=np.int64)
         self.rewards = np.zeros(rollout_steps, dtype=np.float32)
-        self.dones = np.zeros(rollout_steps, dtype=np.float32)   # 1.0 = episode ended
+        self.episode_ends = np.zeros(rollout_steps, dtype=np.float32)
+        self.terminated = np.zeros(rollout_steps, dtype=np.float32)
         self.log_probs_old = np.zeros(rollout_steps, dtype=np.float32)
         self.values = np.zeros(rollout_steps, dtype=np.float32)
+        self.next_values = np.zeros(rollout_steps, dtype=np.float32)
 
         # Filled after compute_gae_and_returns()
         self.advantages: np.ndarray | None = None
@@ -85,54 +86,48 @@ class RolloutBuffer:
         obs: np.ndarray,
         action: int,
         reward: float,
-        done: float,
+        episode_end: float,
+        terminated: float,
         log_prob: float,
         value: float,
+        next_value: float,
     ) -> None:
         """Store a single transition."""
         i = self._ptr
         self.obs[i] = obs
         self.actions[i] = action
         self.rewards[i] = reward
-        self.dones[i] = done
+        self.episode_ends[i] = episode_end
+        self.terminated[i] = terminated
         self.log_probs_old[i] = log_prob
         self.values[i] = value
+        self.next_values[i] = next_value
         self._ptr += 1
 
     # ------------------------------------------------------------------
-    def compute_gae_and_returns(self, last_value: float) -> None:
+    def compute_gae_and_returns(self) -> None:
         """Run GAE over the stored rollout.
-
-        Parameters
-        ----------
-        last_value : float
-            Bootstrapped V(s_{T}) from the state *after* the last stored
-            transition. Set to 0.0 if the last step terminated the episode.
         """
-        advantages = np.zeros(self.rollout_steps, dtype=np.float32)
+        n_steps = self._ptr
+        advantages = np.zeros(n_steps, dtype=np.float32)
         last_gae = 0.0
 
-        # Iterate backwards from T-1 to 0
-        for t in reversed(range(self.rollout_steps)):
-            if t == self.rollout_steps - 1:
-                next_value = last_value
-                next_non_terminal = 1.0 - self.dones[t]
-            else:
-                next_value = self.values[t + 1]
-                next_non_terminal = 1.0 - self.dones[t]
-
-            # TD error (delta)
+        # Iterate backwards from the final filled transition to the first.
+        for t in reversed(range(n_steps)):
+            bootstrap_mask = 1.0 - self.terminated[t]
+            continuation_mask = 1.0 - self.episode_ends[t]
             delta = (
                 self.rewards[t]
-                + self.gamma * next_value * next_non_terminal
+                + self.gamma * self.next_values[t] * bootstrap_mask
                 - self.values[t]
             )
-            # GAE recursion: A_t = δ_t + (γλ)(1-done_t) · A_{t+1}
-            last_gae = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae
+            # Time-limit truncations bootstrap with V(s_{t+1}) but do not carry
+            # A_{t+1} across the environment reset into the next episode.
+            last_gae = delta + self.gamma * self.gae_lambda * continuation_mask * last_gae
             advantages[t] = last_gae
 
         self.advantages = advantages
-        self.returns = advantages + self.values  # R_t = A_t + V(s_t)
+        self.returns = advantages + self.values[:n_steps]  # R_t = A_t + V(s_t)
 
     # ------------------------------------------------------------------
     def get_tensors(self, normalize_advantages: bool = True):
@@ -142,14 +137,15 @@ class RolloutBuffer:
         Reduces variance of policy gradient estimates within a rollout.
         """
         assert self.advantages is not None, "Call compute_gae_and_returns first."
+        n_steps = self._ptr
 
         adv = self.advantages.copy()
         if normalize_advantages:
             adv = (adv - adv.mean()) / (adv.std() + 1e-8)
 
-        obs_t = torch.tensor(self.obs, dtype=torch.float32, device=self.device)
-        act_t = torch.tensor(self.actions, dtype=torch.long, device=self.device)
-        lp_t = torch.tensor(self.log_probs_old, dtype=torch.float32, device=self.device)
+        obs_t = torch.tensor(self.obs[:n_steps], dtype=torch.float32, device=self.device)
+        act_t = torch.tensor(self.actions[:n_steps], dtype=torch.long, device=self.device)
+        lp_t = torch.tensor(self.log_probs_old[:n_steps], dtype=torch.float32, device=self.device)
         adv_t = torch.tensor(adv, dtype=torch.float32, device=self.device)
         ret_t = torch.tensor(self.returns, dtype=torch.float32, device=self.device)
 
@@ -169,9 +165,10 @@ class RolloutBuffer:
         each of shape (minibatch_size, …).
         """
         obs_t, act_t, lp_t, adv_t, ret_t = self.get_tensors(normalize_advantages)
-        indices = torch.randperm(self.rollout_steps, device=self.device)
+        n_steps = obs_t.shape[0]
+        indices = torch.randperm(n_steps, device=self.device)
 
-        for start in range(0, self.rollout_steps, minibatch_size):
+        for start in range(0, n_steps, minibatch_size):
             mb_idx = indices[start: start + minibatch_size]
             yield (
                 obs_t[mb_idx],
