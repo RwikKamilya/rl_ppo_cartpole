@@ -1,0 +1,90 @@
+[
+  {
+    "stage": "core_tricks",
+    "variant": "baseline",
+    "description": "Reference PPO configuration",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/baseline",
+    "overrides": {}
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "no_clip",
+    "description": "Disable PPO clipping",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/no_clip",
+    "overrides": {
+      "use_clip": false
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "lambda0",
+    "description": "Disable GAE; one-step TD advantages",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/lambda0",
+    "overrides": {
+      "gae_lambda": 0.0
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "lambda1",
+    "description": "Monte-Carlo style GAE limit",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/lambda1",
+    "overrides": {
+      "gae_lambda": 1.0
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "no_adv_norm",
+    "description": "Disable per-rollout advantage normalization",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/no_adv_norm",
+    "overrides": {
+      "normalize_advantages": false
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "no_entropy_bonus",
+    "description": "Remove entropy regularization",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/no_entropy_bonus",
+    "overrides": {
+      "ent_coef": 0.0
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "no_grad_clip",
+    "description": "Disable gradient clipping",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/no_grad_clip",
+    "overrides": {
+      "max_grad_norm": 1000000000.0
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "single_epoch",
+    "description": "Single update epoch per rollout",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/single_epoch",
+    "overrides": {
+      "update_epochs": 1
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "full_batch",
+    "description": "Disable minibatch SGD",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/full_batch",
+    "overrides": {
+      "minibatch_size": 2048
+    }
+  },
+  {
+    "stage": "core_tricks",
+    "variant": "no_orth_init",
+    "description": "Disable orthogonal initialization",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/dry_run/core_tricks/no_orth_init",
+    "overrides": {
+      "use_orthogonal_init": false
+    }
+  }
+]

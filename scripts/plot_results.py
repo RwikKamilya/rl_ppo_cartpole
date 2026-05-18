@@ -10,6 +10,7 @@ Outputs (in figures/):
     ppo_eval.pdf
     ppo_diagnostics.pdf / .png
     ppo_stability.pdf / .png
+    ppo_sweep_summary.pdf / .png
 
 Previous-assignment results are expected at:
     previous_results/linear_basic_training.npz   (DQN)
@@ -33,6 +34,7 @@ from rl_a4.plotting import (
     plot_ppo_ablation,
     plot_ppo_diagnostics,
     plot_ppo_eval,
+    plot_ppo_sweep_summary,
     plot_ppo_stability,
 )
 
@@ -61,22 +63,27 @@ def main():
     prev_results_dir = root / "previous_results"
     figures_dir = root / "figures"
 
+    sweep_dir = study_root / "sweep"
+
     print(f"Generating figures from latest study: {study_root}")
 
-    print("\n[1/5] Main comparison (DQN / REINFORCE / AC / A2C / PPO)")
+    print("\n[1/6] Main comparison (DQN / REINFORCE / AC / A2C / best PPO)")
     plot_main_comparison(final_dir, prev_results_dir, figures_dir)
 
-    print("\n[2/5] PPO ablation study")
+    print("\n[2/6] PPO ablation study")
     plot_ppo_ablation(ablations_dir, figures_dir)
 
-    print("\n[3/5] PPO deterministic evaluation curve")
+    print("\n[3/6] PPO deterministic evaluation curve")
     plot_ppo_eval(final_dir, figures_dir)
 
-    print("\n[4/5] PPO update diagnostics")
+    print("\n[4/6] PPO update diagnostics")
     plot_ppo_diagnostics(ablations_dir, figures_dir)
 
-    print("\n[5/5] PPO stability across seeds")
+    print("\n[5/6] PPO stability across seeds")
     plot_ppo_stability(ablations_dir, figures_dir)
+
+    print("\n[6/6] PPO sweep summary")
+    plot_ppo_sweep_summary(sweep_dir, figures_dir)
 
     print(f"\nAll figures saved to {figures_dir}/")
 

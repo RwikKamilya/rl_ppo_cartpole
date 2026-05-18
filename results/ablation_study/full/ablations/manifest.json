@@ -1,0 +1,50 @@
+[
+  {
+    "stage": "ablations",
+    "variant": "baseline",
+    "exp_name": "ppo_full",
+    "description": "Reference PPO configuration",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/ablations/ppo_full",
+    "overrides": {}
+  },
+  {
+    "stage": "ablations",
+    "variant": "no_clip",
+    "exp_name": "ppo_no_clip",
+    "description": "Disable PPO clipping",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/ablations/ppo_no_clip",
+    "overrides": {
+      "use_clip": false
+    }
+  },
+  {
+    "stage": "ablations",
+    "variant": "lambda0",
+    "exp_name": "ppo_lambda0",
+    "description": "Disable GAE; one-step TD advantages",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/ablations/ppo_lambda0",
+    "overrides": {
+      "gae_lambda": 0.0
+    }
+  },
+  {
+    "stage": "ablations",
+    "variant": "no_adv_norm",
+    "exp_name": "ppo_no_adv_norm",
+    "description": "Disable per-rollout advantage normalization",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/ablations/ppo_no_adv_norm",
+    "overrides": {
+      "normalize_advantages": false
+    }
+  },
+  {
+    "stage": "ablations",
+    "variant": "single_epoch",
+    "exp_name": "ppo_single_epoch",
+    "description": "Single update epoch per rollout",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/ablations/ppo_single_epoch",
+    "overrides": {
+      "update_epochs": 1
+    }
+  }
+]

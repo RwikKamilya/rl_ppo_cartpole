@@ -1,0 +1,101 @@
+Algorithm implemented:
+PPO only. Specifically PPO-Clip for discrete CartPole-v1. No SAC code was found.
+
+Key files/functions:
+- scripts/train_ppo.py: main training loop, logging, periodic evaluation
+- rl_a4/ppo.py: PPO update, ratio/clipping, total loss, Adam step
+- rl_a4/buffers.py: rollout storage, GAE, returns, minibatch iterator
+- rl_a4/networks.py: shared-backbone actor-critic network, Categorical policy
+- rl_a4/evaluate.py: deterministic greedy evaluation
+- scripts/run_ablation_study.py: staged ablations/sweep/final study runner
+- scripts/compute_metrics.py + rl_a4/metrics.py: AULC, t_475, solve rate, LaTeX table
+- scripts/plot_results.py + rl_a4/plotting.py: main comparison, ablation, diagnostics, stability figures
+
+Exact losses:
+- Policy ratio: r_t(theta) = exp(log_prob_new - log_prob_old)
+- PPO-Clip policy loss:
+  L_policy = -E[min(r_t*A_t, clip(r_t, 1-eps, 1+eps)*A_t)]
+  with unclipped ablation using -E[r_t*A_t]
+- Value loss:
+  L_value = 0.5 * E[(R_t - V(s_t))^2]
+- Entropy term:
+  H = E[entropy(pi(.|s_t))]
+- Total minimized loss:
+  L_total = L_policy + vf_coef * L_value - ent_coef * H
+- Code location: rl_a4/ppo.py
+
+All engineering tricks found:
+- clipped surrogate objective
+- minibatch SGD
+- multiple epochs over same rollout
+- generalized advantage estimation
+- advantage normalization
+- entropy regularization
+- gradient clipping
+- orthogonal initialization
+- deterministic evaluation
+- approximate KL logging
+- clip fraction logging
+- seed averaging in metrics/plots
+- moving-average smoothing in plots
+- correct terminated vs truncated handling for bootstrap/GAE
+
+Not present:
+- SAC
+- replay buffer
+- target networks
+- reward normalization
+- observation normalization
+- vectorized environments
+- learning-rate schedule
+- target-KL early stopping
+- checkpoint saving
+- explained variance logging
+
+Core hyperparameters:
+- total_env_steps: 1,000,000
+- gamma: 0.99
+- gae_lambda: 0.95 default, lambda0 ablation uses 0.0
+- learning_rate: 3e-4
+- rollout_steps: 2048 default, 512 tuned
+- minibatch_size: 256 default, 64 tuned
+- update_epochs: 10 default, 1 single-epoch ablation, 4 tuned
+- clip_coef: 0.2 default
+- ent_coef: 0.01 default, 0.001 tuned
+- vf_coef: 0.5
+- max_grad_norm: 0.5
+- network: shared 2-layer MLP, hidden_dim=64, Tanh, separate actor/critic heads
+- optimizer: Adam with eps=1e-5
+- eval_interval: 10,000 steps
+- n_eval_episodes: 20
+- plot smoothing window: 25
+
+Experiments implemented:
+- top-level PPO runs: ppo_full, ppo_no_clip, ppo_lambda0, ppo_no_adv_norm, ppo_tuned
+- staged study runner:
+  ablations = baseline, no_clip, lambda0, no_adv_norm, single_epoch
+  sweep = clip_coef / gae_lambda / rollout_steps / update_epochs
+  final = baseline vs tuned
+- previous baseline comparisons load A2C, AC, REINFORCE, DQN from previous_results/*.npz
+
+Result artifacts available now:
+- complete top-level 5-seed PPO folders for ppo_full / ppo_no_clip / ppo_lambda0 / ppo_no_adv_norm / ppo_tuned
+- complete staged ablations with 3 seeds under results/ablation_study/full/ablations/
+- staged ablation summary.csv is present and usable
+- staged sweep is partial only: clip_0p1 seeds 0 and 1
+- staged final folder is absent
+- figures exist in figures/, but some may predate the current latest-study-only plotting logic
+
+Important caveats / risks:
+- latest staged study is incomplete, so current results/metrics.csv omits PPO_full and PPO_tuned
+- scripts/plot_results.py and scripts/compute_metrics.py now read the latest staged study, so final comparison plots/tables need a completed staged final/
+- evaluation env resets are not explicitly seeded, so evaluation reproducibility is weaker than training reproducibility
+- PPO vs previous baselines is not perfectly apples-to-apples: PPO uses deterministic eval logs, old baselines use saved training-return traces
+- README is outdated relative to the current run_ablation_study workflow
+- plot text for staged ablations still says 5 seeds although latest staged ablations have 3
+
+Recommended research question:
+“Which PPO engineering choices matter most on CartPole-v1: clipping, GAE, advantage normalization, or repeated update epochs?”
+
+Best current evidence for that question:
+- results/ablation_study/full/ablations/summary.csv is complete and directly supports it.

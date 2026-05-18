@@ -79,6 +79,14 @@ def _moving_average(arr: np.ndarray, window: int) -> np.ndarray:
     return np.convolve(arr, np.ones(window) / window, mode="valid")
 
 
+def _moving_average_same(arr: np.ndarray, window: int) -> np.ndarray:
+    """1-D moving average with same-length output for plotting."""
+    if window <= 1 or len(arr) < window:
+        return arr
+    kernel = np.ones(window) / window
+    return np.convolve(arr, kernel, mode="same")
+
+
 def load_npz_curves(
     npz_path: Path,
     smooth_window: int = MA_WINDOW,
@@ -325,6 +333,25 @@ def _variant_dir_name(variant: str) -> str:
     return variant.lower()
 
 
+def _count_seed_dirs(results_dir: Path) -> int:
+    return len(list(results_dir.glob("seed_*")))
+
+
+def _smooth_plot_curves(
+    steps: np.ndarray,
+    mean: np.ndarray,
+    std: np.ndarray,
+    window: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if window <= 1:
+        return steps, mean, std
+    return (
+        steps,
+        _moving_average_same(mean, window),
+        _moving_average_same(std, window),
+    )
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Figure 1: main comparison
 # ──────────────────────────────────────────────────────────────────────────────
@@ -332,8 +359,8 @@ def _variant_dir_name(variant: str) -> str:
 def _latest_ppo_dir(results_dir: Path) -> Optional[Tuple[str, Path]]:
     """Pick the best available PPO directory from a stage result folder."""
     candidates = [
-        ("PPO (tuned)", results_dir / "ppo_tuned"),
-        ("PPO", results_dir / "ppo_full"),
+        ("PPO (best tuned)", results_dir / "ppo_tuned"),
+        ("PPO (baseline)", results_dir / "ppo_full"),
     ]
     for label, path in candidates:
         if path.exists() and list(path.glob("seed_*/eval.csv")):
@@ -414,6 +441,7 @@ def plot_ppo_ablation(results_dir: Path, figures_dir: Path) -> None:
     """PPO_full vs PPO_no_clip vs PPO_lambda0 vs PPO_no_adv_norm vs PPO_single_epoch."""
     figures_dir.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 5))
+    eval_smooth_window = 9
 
     variants = ["PPO_full", "PPO_no_clip", "PPO_lambda0", "PPO_no_adv_norm", "PPO_single_epoch"]
     labels = {
@@ -424,6 +452,7 @@ def plot_ppo_ablation(results_dir: Path, figures_dir: Path) -> None:
         "PPO_single_epoch": "PPO (single epoch)",
     }
     found_any = False
+    seed_counts = []
     for variant in variants:
         vdir = results_dir / _variant_dir_name(variant)
         result = load_ppo_eval_curves(vdir)
@@ -433,11 +462,13 @@ def plot_ppo_ablation(results_dir: Path, figures_dir: Path) -> None:
             print(f"  [WARNING] {variant} results not found, skipping.")
             continue
         steps, mean, std = result
+        steps, mean, std = _smooth_plot_curves(steps, mean, std, eval_smooth_window)
         color = COLORS.get(variant, "#333333")
         ls = LINESTYLES.get(variant, "-")
         _add_curve(ax, steps, mean, std,
-                   label=labels[variant], color=color, linestyle=ls)
+                   label=labels[variant], color=color, linestyle=ls, alpha_shade=0.10)
         found_any = True
+        seed_counts.append(_count_seed_dirs(vdir))
 
     if not found_any:
         print("  [WARNING] No ablation results found.")
@@ -446,8 +477,9 @@ def plot_ppo_ablation(results_dir: Path, figures_dir: Path) -> None:
 
     _setup_axes(ax, title="CartPole-v1: PPO Ablation Study")
     ax.legend(loc="lower right", fontsize=10, framealpha=0.85)
+    n_seeds = max(seed_counts) if seed_counts else 0
     ax.text(0.01, 0.01,
-            f"Shaded: ±1 std dev | Eval curves | 5 seeds",
+            f"Shaded: ±1 std dev | Deterministic eval | Smoothed: MA({eval_smooth_window}) | up to {n_seeds} seeds",
             transform=ax.transAxes, fontsize=7.5, color="gray",
             verticalalignment="bottom")
 
@@ -497,6 +529,96 @@ def plot_ppo_eval(results_dir: Path, figures_dir: Path) -> None:
     out = figures_dir / "ppo_eval.pdf"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     print(f"  Saved {out}")
+    plt.close(fig)
+
+
+def plot_ppo_sweep_summary(sweep_dir: Path, figures_dir: Path) -> None:
+    """Plot one-factor sweep results in a compact, report-friendly format."""
+    summary_csv = sweep_dir / "summary.csv"
+    if not summary_csv.exists():
+        print(f"  [WARNING] Sweep summary not found: {summary_csv}")
+        return
+
+    df = pd.read_csv(summary_csv)
+    if df.empty:
+        print("  [WARNING] Sweep summary is empty.")
+        return
+
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(2, 2, figsize=(10.5, 7))
+
+    factor_specs = [
+        ("clip_", "Clip Coefficient", "clip_coef"),
+        ("gae_", "GAE Lambda", "gae_lambda"),
+        ("rollout_", "Rollout Steps", "rollout_steps"),
+        ("epochs_", "Update Epochs", "update_epochs"),
+    ]
+
+    def _factor_value(name: str, prefix: str):
+        raw = name[len(prefix):]
+        if prefix in ("clip_", "gae_"):
+            return float(raw.replace("p", "."))
+        return int(raw)
+
+    for ax, (prefix, title, xlabel) in zip(axes.flat, factor_specs):
+        sub = df[df["variant"].str.startswith(prefix)].copy()
+        if sub.empty:
+            ax.set_visible(False)
+            continue
+        sub["factor_value"] = sub["variant"].apply(lambda name: _factor_value(name, prefix))
+        sub.sort_values("factor_value", inplace=True)
+
+        x = np.arange(len(sub))
+        bars = ax.bar(x, sub["AULC_200k"], color="#4c78a8", alpha=0.85)
+        ax.set_xticks(x)
+        ax.set_xticklabels(sub["factor_value"].tolist())
+        ax.set_title(title, fontsize=12)
+        ax.set_xlabel(xlabel, fontsize=10)
+        ax.set_ylabel("AULC_200k", fontsize=10)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.tick_params(labelsize=9)
+
+        best_idx = int(sub["AULC_200k"].idxmax())
+        for rect, (_, row) in zip(bars, sub.iterrows()):
+            label = f"{row['final_eval_return_mean']:.0f}"
+            ax.text(
+                rect.get_x() + rect.get_width() / 2,
+                rect.get_height() + 0.01,
+                label,
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                color="#333333",
+            )
+        best_row = sub.loc[best_idx]
+        ax.axvline(sub.index.get_loc(best_idx), color="#d62728", linestyle=":", linewidth=1.0)
+        ax.text(
+            0.02,
+            0.98,
+            f"Best: {best_row['factor_value']} | final eval {best_row['final_eval_return_mean']:.0f}",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8,
+            color="#555555",
+        )
+
+    fig.suptitle("PPO One-Factor Sweep Summary", fontsize=14)
+    fig.text(
+        0.5,
+        0.01,
+        "Bars show early-learning performance (AULC_200k); labels show final deterministic evaluation return.",
+        ha="center",
+        fontsize=9,
+        color="gray",
+    )
+    fig.tight_layout(rect=[0, 0.04, 1, 0.95])
+
+    for ext in ("pdf", "png"):
+        out = figures_dir / f"ppo_sweep_summary.{ext}"
+        fig.savefig(out, dpi=150, bbox_inches="tight")
+        print(f"  Saved {out}")
     plt.close(fig)
 
 

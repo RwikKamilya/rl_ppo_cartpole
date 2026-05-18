@@ -1,0 +1,18 @@
+[
+  {
+    "stage": "final",
+    "variant": "baseline",
+    "exp_name": "ppo_full",
+    "description": "Reference PPO configuration",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/final/ppo_full",
+    "overrides": {}
+  },
+  {
+    "stage": "final",
+    "variant": "final_tuned",
+    "exp_name": "ppo_tuned",
+    "description": "Final tuned PPO configuration",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/final/ppo_tuned",
+    "overrides": {}
+  }
+]

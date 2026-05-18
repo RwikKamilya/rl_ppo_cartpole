@@ -211,6 +211,7 @@ def metrics_to_latex(df: pd.DataFrame) -> str:
     """Convert a metrics DataFrame to a LaTeX table string."""
     cols_display = {
         "algorithm": "Algorithm",
+        "n_seeds": "Seeds",
         "final_eval_return_mean": r"Final Eval $\bar{R}$",
         "final_eval_return_std": r"$\sigma$",
         "AULC_1M": "AULC$_{1M}$",
@@ -224,7 +225,7 @@ def metrics_to_latex(df: pd.DataFrame) -> str:
     lines = [
         r"\begin{table}[h]",
         r"\centering",
-        r"\caption{Performance metrics on CartPole-v1 over 5 seeds}",
+        r"\caption{Performance metrics on CartPole-v1. Seed counts vary by experiment; see the Seeds column.}",
         r"\label{tab:metrics}",
         r"\small",
         sub.to_latex(index=False, float_format="%.3f", escape=False),

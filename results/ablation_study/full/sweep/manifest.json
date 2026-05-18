@@ -1,0 +1,122 @@
+[
+  {
+    "stage": "sweep",
+    "variant": "clip_0p1",
+    "exp_name": "clip_0p1",
+    "description": "Clip coefficient sweep: clip_coef=0.1",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/clip_0p1",
+    "overrides": {
+      "clip_coef": 0.1
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "clip_0p2",
+    "exp_name": "clip_0p2",
+    "description": "Clip coefficient sweep: clip_coef=0.2",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/clip_0p2",
+    "overrides": {
+      "clip_coef": 0.2
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "clip_0p3",
+    "exp_name": "clip_0p3",
+    "description": "Clip coefficient sweep: clip_coef=0.3",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/clip_0p3",
+    "overrides": {
+      "clip_coef": 0.3
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "gae_0p9",
+    "exp_name": "gae_0p9",
+    "description": "GAE lambda sweep: gae_lambda=0.9",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/gae_0p9",
+    "overrides": {
+      "gae_lambda": 0.9
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "gae_0p95",
+    "exp_name": "gae_0p95",
+    "description": "GAE lambda sweep: gae_lambda=0.95",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/gae_0p95",
+    "overrides": {
+      "gae_lambda": 0.95
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "gae_0p98",
+    "exp_name": "gae_0p98",
+    "description": "GAE lambda sweep: gae_lambda=0.98",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/gae_0p98",
+    "overrides": {
+      "gae_lambda": 0.98
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "rollout_512",
+    "exp_name": "rollout_512",
+    "description": "Rollout length sweep: rollout_steps=512",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/rollout_512",
+    "overrides": {
+      "rollout_steps": 512
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "rollout_1024",
+    "exp_name": "rollout_1024",
+    "description": "Rollout length sweep: rollout_steps=1024",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/rollout_1024",
+    "overrides": {
+      "rollout_steps": 1024
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "rollout_2048",
+    "exp_name": "rollout_2048",
+    "description": "Rollout length sweep: rollout_steps=2048",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/rollout_2048",
+    "overrides": {
+      "rollout_steps": 2048
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "epochs_2",
+    "exp_name": "epochs_2",
+    "description": "Update epoch sweep: update_epochs=2",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/epochs_2",
+    "overrides": {
+      "update_epochs": 2
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "epochs_4",
+    "exp_name": "epochs_4",
+    "description": "Update epoch sweep: update_epochs=4",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/epochs_4",
+    "overrides": {
+      "update_epochs": 4
+    }
+  },
+  {
+    "stage": "sweep",
+    "variant": "epochs_8",
+    "exp_name": "epochs_8",
+    "description": "Update epoch sweep: update_epochs=8",
+    "result_dir": "/home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full/sweep/epochs_8",
+    "overrides": {
+      "update_epochs": 8
+    }
+  }
+]

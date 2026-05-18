@@ -1,0 +1,39 @@
+/home/rwik/leiden_projects/rl_ppo_cartpole/venv/bin/python /home/rwik/leiden_projects/rl_ppo_cartpole/scripts/compute_metrics.py
+Using latest study: /home/rwik/leiden_projects/rl_ppo_cartpole/results/ablation_study/full
+  PPO_full: AULC_200k=0.373  t_475=356762±129743  solve=100.0%
+  PPO_tuned: AULC_200k=0.587  t_475=154317±27985  solve=100.0%
+  PPO_no_clip: AULC_200k=0.268  t_475=264875±75828  solve=100.0%
+  PPO_lambda0: AULC_200k=0.389  t_475=277845±41983  solve=100.0%
+  PPO_no_adv_norm: AULC_200k=0.493  t_475=204117±61082  solve=100.0%
+  PPO_single_epoch: AULC_200k=0.193  t_475=744107±95070  solve=100.0%
+  A2C: AULC_200k=0.797  t_475=105629±17153  solve=100.0%
+  REINFORCE: AULC_200k=0.623  t_475=266654±24617  solve=100.0%
+  AC: AULC_200k=0.186  t_475=412956±183552  solve=40.0%
+  DQN: AULC_200k=0.103  t_475=415389±17630  solve=100.0%
+
+Metrics saved → /home/rwik/leiden_projects/rl_ppo_cartpole/results/metrics.csv
+LaTeX table  → /home/rwik/leiden_projects/rl_ppo_cartpole/results/metrics_latex.tex
+
+============================================================
+SUMMARY
+============================================================
+
+PPO_full:
+  t_475        = 356762 ± 129743 steps
+  solve_rate   = 100.0%  (5/5 seeds)
+  AULC_200k    = 0.373
+  final_eval_R = 485.7 ± 28.5
+
+  Sentence: "PPO reaches the 475 threshold after 356762±129743 steps and solves CartPole in 5/5 seeds."
+
+PPO_tuned:
+  t_475        = 154317 ± 27985 steps
+  solve_rate   = 100.0%
+  AULC_200k    = 0.587
+  final_eval_R = 500.0 ± 0.0
+
+  Best AULC_200k (early learning):  A2C
+  Best final_eval_return:           PPO_tuned
+
+  PPO vs A2C early learning (AULC_200k): PPO=0.373  A2C=0.797 → PPO is slower
+============================================================

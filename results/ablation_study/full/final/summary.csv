@@ -1,0 +1,3 @@
+stage,variant,description,n_seeds,final_eval_return_mean,final_eval_return_std,final_train_return_mean,final_train_return_std,AULC_1M,AULC_200k,t_475_mean,t_475_std,solve_rate,post_solve_min_return
+final,baseline,Reference PPO configuration,5,485.73999999999995,28.520000000000007,469.352,41.90522039078187,0.7344937164800001,0.37302046720000004,356761.6,129743.02255397012,1.0,158.95999999999998
+final,final_tuned,Final tuned PPO configuration,5,500.0,0.0,497.76000000000005,1.7413672788932344,0.9166623078399999,0.5874444288,154316.8,27984.629198186638,1.0,209.41
