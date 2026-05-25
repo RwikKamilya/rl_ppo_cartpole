@@ -23,6 +23,7 @@ def evaluate_policy(
     net: ActorCriticNet,
     n_episodes: int = 20,
     device: torch.device = torch.device("cpu"),
+    seed: int | None = None,
 ) -> tuple[float, float]:
     """Run `n_episodes` greedy episodes and return (mean_return, std_return).
 
@@ -35,32 +36,46 @@ def evaluate_policy(
     n_episodes : int
         Number of evaluation episodes.
     device : torch.device
+    seed : int | None
+        Optional base seed. If provided, episode k uses reset(seed=seed+k).
 
     Returns
     -------
     (mean_return, std_return) over the `n_episodes` episodes.
     """
+    was_training = net.training
     net.eval()
     episode_returns = []
 
     with torch.no_grad():
-        for _ in range(n_episodes):
+        for episode_idx in range(n_episodes):
             env = env_fn()
-            obs, _ = env.reset()
+            reset_seed = None if seed is None else seed + episode_idx
+            obs, _ = env.reset(seed=reset_seed)
             ep_return = 0.0
             done = False
 
-            while not done:
-                obs_t = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
-                action = net.get_deterministic_action(obs_t).item()
-                obs, reward, terminated, truncated, _ = env.step(action)
-                ep_return += reward
-                done = terminated or truncated
+            try:
+                while not done:
+                    obs_t = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+                    action_t = net.get_deterministic_action(obs_t)
+                    repeat_action_t = net.get_deterministic_action(obs_t)
+                    assert torch.equal(action_t, repeat_action_t), (
+                        "Evaluation action selection must be deterministic."
+                    )
+                    action = action_t.item()
+                    obs, reward, terminated, truncated, _ = env.step(action)
+                    ep_return += reward
+                    done = terminated or truncated
+            finally:
+                env.close()
 
             episode_returns.append(ep_return)
-            env.close()
 
-    net.train()
+    if was_training:
+        net.train()
+    else:
+        net.eval()
 
     returns = np.array(episode_returns, dtype=np.float32)
     return float(returns.mean()), float(returns.std())

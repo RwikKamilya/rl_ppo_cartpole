@@ -4,7 +4,6 @@ run_all.py – Launch the core PPO experiments sequentially.
 Usage:
     python scripts/run_all.py                  # baseline + 4 ablations + tuned
     python scripts/run_all.py --seeds 0 1 2    # subset of seeds
-    python scripts/run_all.py --smoke          # quick smoke test (5000 steps)
 
 Experiments:
     ppo_full         – baseline PPO-clip with all tricks

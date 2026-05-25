@@ -3,7 +3,7 @@ plotting.py – Publication-ready figure generation.
 
 Generates multiple figures:
   1. figures/main_comparison.{pdf,png}
-     DQN vs REINFORCE vs AC vs A2C vs PPO_full on CartPole-v1.
+     DQN vs REINFORCE vs AC vs A2C vs PPO_final/PPO_full on CartPole-v1.
   2. figures/ppo_ablation.{pdf,png}
      PPO_full vs PPO_no_clip vs PPO_lambda0 vs PPO_no_adv_norm vs PPO_single_epoch.
   3. figures/ppo_eval.pdf
@@ -29,8 +29,15 @@ Previous results are loaded from .npz files (A2/A3 format):
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
+
+_cache_root = Path(os.environ.setdefault("XDG_CACHE_HOME", str(Path(tempfile.gettempdir()) / "xdg-cache")))
+_cache_root.mkdir(parents=True, exist_ok=True)
+_mpl_cache_dir = Path(os.environ.setdefault("MPLCONFIGDIR", str(_cache_root / "matplotlib")))
+_mpl_cache_dir.mkdir(parents=True, exist_ok=True)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -49,6 +56,7 @@ COLORS = {
     "AC": "#2ca02c",
     "A2C": "#d62728",
     "PPO_full": "#9467bd",
+    "PPO_final": "#2f4b7c",
     "PPO_tuned": "#2f4b7c",
     "PPO_no_clip": "#8c564b",
     "PPO_lambda0": "#e377c2",
@@ -57,10 +65,12 @@ COLORS = {
 }
 
 LINESTYLES = {
-    "PPO_full": "-",
-    "PPO_no_clip": "--",
-    "PPO_lambda0": "-.",
-    "PPO_no_adv_norm": ":",
+    "PPO_full":         ":",
+    "PPO_final":        "-",
+    "PPO_tuned":        (0, (8, 2)),        # long dashes – the "best" config
+    "PPO_no_clip":      "--",
+    "PPO_lambda0":      "-.",
+    "PPO_no_adv_norm":  "-",
     "PPO_single_epoch": (0, (3, 1, 1, 1)),
 }
 
@@ -268,12 +278,12 @@ def load_ppo_eval_seed_stats(results_dir: Path) -> Optional[Dict[str, List[float
         if len(means) == 0:
             continue
 
-        final_returns.append(float(means[-5:].mean()))
+        final_returns.append(float(means[-1]))
 
         solve_step = float("nan")
-        for i in range(len(means) - 2):
-            if np.all(means[i:i + 3] >= 475.0):
-                solve_step = float(steps[i])
+        for step, mean in zip(steps, means):
+            if mean >= 475.0:
+                solve_step = float(step)
                 break
         solve_times.append(solve_step)
 
@@ -359,6 +369,7 @@ def _smooth_plot_curves(
 def _latest_ppo_dir(results_dir: Path) -> Optional[Tuple[str, Path]]:
     """Pick the best available PPO directory from a stage result folder."""
     candidates = [
+        ("PPO", results_dir / "ppo_final"),
         ("PPO (best tuned)", results_dir / "ppo_tuned"),
         ("PPO (baseline)", results_dir / "ppo_full"),
     ]
@@ -411,7 +422,10 @@ def plot_main_comparison(
         steps, mean, std = ppo_result
         n_ppo_seeds = len(list(ppo_dir.glob("seed_*")))
         n_seeds_found = max(n_seeds_found, n_ppo_seeds)
-        ppo_color_key = "PPO_tuned" if ppo_dir.name == "ppo_tuned" else "PPO_full"
+        ppo_color_key = {
+            "ppo_final": "PPO_final",
+            "ppo_tuned": "PPO_tuned",
+        }.get(ppo_dir.name, "PPO_full")
         _add_curve(ax, steps, mean, std, label=latest_label,
                    color=COLORS.get(ppo_color_key, COLORS["PPO_full"]), linestyle="-")
     else:
@@ -426,10 +440,11 @@ def plot_main_comparison(
             verticalalignment="bottom")
 
     fig.tight_layout()
-    for ext in ("pdf", "png"):
-        out = figures_dir / f"main_comparison.{ext}"
-        fig.savefig(out, dpi=150, bbox_inches="tight")
-        print(f"  Saved {out}")
+    for stem in ("main_comparison", "final_learning_curves_comparison"):
+        for ext in ("pdf", "png"):
+            out = figures_dir / f"{stem}.{ext}"
+            fig.savefig(out, dpi=150, bbox_inches="tight")
+            print(f"  Saved {out}")
     plt.close(fig)
 
 
@@ -437,24 +452,31 @@ def plot_main_comparison(
 # Figure 2: PPO ablation
 # ──────────────────────────────────────────────────────────────────────────────
 
-def plot_ppo_ablation(results_dir: Path, figures_dir: Path) -> None:
-    """PPO_full vs PPO_no_clip vs PPO_lambda0 vs PPO_no_adv_norm vs PPO_single_epoch."""
+def plot_ppo_ablation(results_dir: Path, figures_dir: Path,
+                      variant_dirs: Optional[Dict[str, Path]] = None) -> None:
+    """PPO ablation curves.  Pass variant_dirs to override per-variant paths."""
     figures_dir.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 5))
     eval_smooth_window = 9
 
-    variants = ["PPO_full", "PPO_no_clip", "PPO_lambda0", "PPO_no_adv_norm", "PPO_single_epoch"]
+    variants = ["PPO_final", "PPO_full", "PPO_tuned", "PPO_no_clip", "PPO_lambda0",
+                "PPO_no_adv_norm", "PPO_single_epoch"]
     labels = {
-        "PPO_full": "PPO (full)",
-        "PPO_no_clip": "PPO (no clip)",
-        "PPO_lambda0": r"PPO ($\lambda$=0)",
-        "PPO_no_adv_norm": "PPO (no adv norm)",
-        "PPO_single_epoch": "PPO (single epoch)",
+        "PPO_final":        "PPO (Final)",
+        "PPO_full":         "PPO (Full)",
+        "PPO_tuned":        "PPO (Tuned)",
+        "PPO_no_clip":      "PPO (No Clip)",
+        "PPO_lambda0":      r"PPO ($\lambda$=0)",
+        "PPO_no_adv_norm":  "PPO (No Adv. Norm.)",
+        "PPO_single_epoch": "PPO (Single Epoch)",
     }
     found_any = False
     seed_counts = []
     for variant in variants:
-        vdir = results_dir / _variant_dir_name(variant)
+        if variant_dirs and variant in variant_dirs:
+            vdir = variant_dirs[variant]
+        else:
+            vdir = results_dir / _variant_dir_name(variant)
         result = load_ppo_eval_curves(vdir)
         if result is None:
             result = load_ppo_train_curves(vdir)
@@ -484,10 +506,11 @@ def plot_ppo_ablation(results_dir: Path, figures_dir: Path) -> None:
             verticalalignment="bottom")
 
     fig.tight_layout()
-    for ext in ("pdf", "png"):
-        out = figures_dir / f"ppo_ablation.{ext}"
-        fig.savefig(out, dpi=150, bbox_inches="tight")
-        print(f"  Saved {out}")
+    for stem in ("ppo_ablation", "ppo_ablation_or_variants"):
+        for ext in ("pdf", "png"):
+            out = figures_dir / f"{stem}.{ext}"
+            fig.savefig(out, dpi=150, bbox_inches="tight")
+            print(f"  Saved {out}")
     plt.close(fig)
 
 
@@ -514,7 +537,10 @@ def plot_ppo_eval(results_dir: Path, figures_dir: Path) -> None:
 
     steps, mean, std = result
     n_seeds = len(list(ppo_dir.glob("seed_*")))
-    ppo_color_key = "PPO_tuned" if ppo_dir.name == "ppo_tuned" else "PPO_full"
+    ppo_color_key = {
+        "ppo_final": "PPO_final",
+        "ppo_tuned": "PPO_tuned",
+    }.get(ppo_dir.name, "PPO_full")
     _add_curve(ax, steps, mean, std, label=f"{latest_label} (eval, {n_seeds} seeds)",
                color=COLORS.get(ppo_color_key, COLORS["PPO_full"]))
 
@@ -622,18 +648,22 @@ def plot_ppo_sweep_summary(sweep_dir: Path, figures_dir: Path) -> None:
     plt.close(fig)
 
 
-def plot_ppo_diagnostics(results_dir: Path, figures_dir: Path) -> None:
+def plot_ppo_diagnostics(results_dir: Path, figures_dir: Path,
+                         variant_dirs: Optional[Dict[str, Path]] = None) -> None:
     """Plot PPO training diagnostics that explain ablation behavior."""
     figures_dir.mkdir(parents=True, exist_ok=True)
     fig, axes = plt.subplots(2, 2, figsize=(11, 7))
 
-    variants = ["PPO_full", "PPO_no_clip", "PPO_lambda0", "PPO_no_adv_norm", "PPO_single_epoch"]
+    variants = ["PPO_final", "PPO_full", "PPO_tuned", "PPO_no_clip", "PPO_lambda0",
+                "PPO_no_adv_norm", "PPO_single_epoch"]
     labels = {
-        "PPO_full": "PPO (full)",
-        "PPO_no_clip": "PPO (no clip)",
-        "PPO_lambda0": r"PPO ($\lambda$=0)",
-        "PPO_no_adv_norm": "PPO (no adv norm)",
-        "PPO_single_epoch": "PPO (single epoch)",
+        "PPO_final":        "PPO (Final)",
+        "PPO_full":         "PPO (Full)",
+        "PPO_tuned":        "PPO (Tuned)",
+        "PPO_no_clip":      "PPO (No Clip)",
+        "PPO_lambda0":      r"PPO ($\lambda$=0)",
+        "PPO_no_adv_norm":  "PPO (No Adv. Norm.)",
+        "PPO_single_epoch": "PPO (Single Epoch)",
     }
     diagnostics = [
         ("approx_kl", "Approximate KL", "Approx. KL"),
@@ -645,7 +675,10 @@ def plot_ppo_diagnostics(results_dir: Path, figures_dir: Path) -> None:
     found_any = False
     for ax, (column, title, ylabel) in zip(axes.flat, diagnostics):
         for variant in variants:
-            vdir = results_dir / _variant_dir_name(variant)
+            if variant_dirs and variant in variant_dirs:
+                vdir = variant_dirs[variant]
+            else:
+                vdir = results_dir / _variant_dir_name(variant)
             result = load_ppo_update_metric_curves(vdir, column)
             if result is None:
                 continue
@@ -673,7 +706,7 @@ def plot_ppo_diagnostics(results_dir: Path, figures_dir: Path) -> None:
     fig.text(
         0.5,
         0.01,
-        "These plots show whether each trick improves trust-region control, exploration, and critic stability.",
+        "Diagnostics averaged across seeds; clip fraction for No Clip is logged only diagnostically, not used in the loss.",
         ha="center",
         fontsize=9,
         color="gray",
@@ -687,13 +720,15 @@ def plot_ppo_diagnostics(results_dir: Path, figures_dir: Path) -> None:
     plt.close(fig)
 
 
-def plot_ppo_stability(results_dir: Path, figures_dir: Path) -> None:
+def plot_ppo_stability(results_dir: Path, figures_dir: Path,
+                       variant_dirs: Optional[Dict[str, Path]] = None) -> None:
     """Plot per-seed stability and robustness summaries across PPO variants."""
     figures_dir.mkdir(parents=True, exist_ok=True)
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.5))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
 
-    variants = ["PPO_full", "PPO_no_clip", "PPO_lambda0", "PPO_no_adv_norm", "PPO_single_epoch"]
-    labels = ["full", "no_clip", "lambda0", "no_adv_norm", "single_epoch"]
+    variants = ["PPO_final", "PPO_full", "PPO_tuned", "PPO_no_clip", "PPO_lambda0",
+                "PPO_no_adv_norm", "PPO_single_epoch"]
+    labels = ["Final", "Full", "Tuned", "No Clip", r"$\lambda$=0", "No Adv. Norm.", "Single Epoch"]
     colors = [COLORS.get(v, "#333333") for v in variants]
     metrics = [
         ("t_475", r"Solve Time $t_{475}$", "Steps"),
@@ -703,8 +738,11 @@ def plot_ppo_stability(results_dir: Path, figures_dir: Path) -> None:
 
     variant_stats = []
     for variant in variants:
-        stats = load_ppo_eval_seed_stats(results_dir / _variant_dir_name(variant))
-        variant_stats.append(stats)
+        if variant_dirs and variant in variant_dirs:
+            vdir = variant_dirs[variant]
+        else:
+            vdir = results_dir / _variant_dir_name(variant)
+        variant_stats.append(load_ppo_eval_seed_stats(vdir))
 
     if not any(stats is not None for stats in variant_stats):
         print("  [WARNING] No PPO eval logs found for stability plot.")
@@ -762,7 +800,7 @@ def plot_ppo_stability(results_dir: Path, figures_dir: Path) -> None:
     fig.text(
         0.5,
         0.01,
-        "Boxes summarize seed variation; points show individual seeds. This is useful for discussing stability, not just mean reward.",
+        "Boxes: seed variation | points: individual seeds | post-solve worst = minimum eval return after first reaching 475",
         ha="center",
         fontsize=9,
         color="gray",
@@ -771,6 +809,100 @@ def plot_ppo_stability(results_dir: Path, figures_dir: Path) -> None:
 
     for ext in ("pdf", "png"):
         out = figures_dir / f"ppo_stability.{ext}"
+        fig.savefig(out, dpi=150, bbox_inches="tight")
+        print(f"  Saved {out}")
+    plt.close(fig)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Figure: Pareto scatter (sample efficiency vs post-solve stability)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def plot_ppo_pareto(results_dir: Path, figures_dir: Path,
+                    variant_dirs: Optional[Dict[str, Path]] = None) -> None:
+    """Pareto scatter: t_475 (x, lower better) vs post-solve worst return
+    (y, higher better).  Marker size encodes AULC_200k; colour per variant.
+
+    This is an optional summary figure — it loads eval CSVs directly so it
+    does not depend on a pre-computed metrics file.
+    """
+    from rl_a4.metrics import (
+        compute_ppo_per_seed_df,
+        aggregate_per_seed_to_summary,
+    )
+
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    variants = ["PPO_final", "PPO_full", "PPO_tuned", "PPO_no_clip", "PPO_lambda0",
+                "PPO_no_adv_norm", "PPO_single_epoch"]
+    display = {
+        "PPO_final":        "PPO (Final)",
+        "PPO_full":         "PPO (Full)",
+        "PPO_tuned":        "PPO (Tuned)",
+        "PPO_no_clip":      "PPO (No Clip)",
+        "PPO_lambda0":      r"PPO ($\lambda$=0)",
+        "PPO_no_adv_norm":  "PPO (No Adv. Norm.)",
+        "PPO_single_epoch": "PPO (Single Epoch)",
+    }
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    plotted_any = False
+
+    for variant in variants:
+        if variant_dirs and variant in variant_dirs:
+            vdir = variant_dirs[variant]
+        else:
+            vdir = results_dir / _variant_dir_name(variant)
+
+        if not vdir.exists():
+            continue
+        try:
+            df = compute_ppo_per_seed_df(vdir)
+        except Exception:
+            continue
+        if df.empty:
+            continue
+
+        summary = aggregate_per_seed_to_summary(df, variant, display.get(variant, variant))
+        t_mean  = summary.get("t_475_mean",              float("nan"))
+        pw_mean = summary.get("post_solve_worst_return_mean", float("nan"))
+        aulc    = summary.get("aulc_200k_mean",           float("nan"))
+
+        if not (np.isfinite(t_mean) and np.isfinite(pw_mean)):
+            continue
+
+        # Marker size proportional to AULC (clipped for readability)
+        size = max(60, min(600, aulc * 1200)) if np.isfinite(aulc) else 100
+
+        color = COLORS.get(variant, "#333333")
+        ax.scatter([t_mean], [pw_mean], s=size, color=color,
+                   alpha=0.85, zorder=3, edgecolors="white", linewidth=0.7)
+        ax.annotate(display.get(variant, variant),
+                    (t_mean, pw_mean),
+                    textcoords="offset points", xytext=(6, 4),
+                    fontsize=8.5, color=color)
+        plotted_any = True
+
+    if not plotted_any:
+        print("  [WARNING] No data for Pareto plot.")
+        plt.close(fig)
+        return
+
+    ax.set_xlabel(r"Mean $t_{475}$ (steps) $\downarrow$", fontsize=12)
+    ax.set_ylabel("Post-solve worst return ↑", fontsize=12)
+    ax.set_title("CartPole-v1: Sample Efficiency vs. Stability", fontsize=13)
+    ax.text(0.01, 0.01,
+            "Marker size ∝ AULC_200k  |  x-axis: first solve step (lower = faster)"
+            "  |  y-axis: post-solve worst return (higher = more stable)",
+            transform=ax.transAxes, fontsize=7.5, color="gray",
+            verticalalignment="bottom")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.tick_params(labelsize=10)
+    fig.tight_layout()
+
+    for ext in ("pdf", "png"):
+        out = figures_dir / f"ppo_pareto.{ext}"
         fig.savefig(out, dpi=150, bbox_inches="tight")
         print(f"  Saved {out}")
     plt.close(fig)

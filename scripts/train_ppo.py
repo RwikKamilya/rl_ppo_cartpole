@@ -69,9 +69,84 @@ DEFAULT_CONFIG = {
     "use_clip": True,          # False → PPO_no_clip ablation
     "eval_interval": 10_000,
     "n_eval_episodes": 20,
+    "eval_seed_offset": 9999,
+    "seed_list": [0, 1, 2, 3, 4],
     "prefer_gpu": False,
     "results_dir": "results",
 }
+
+CONFIG_ALIASES = {
+    "total_steps": "total_env_steps",
+    "lambda_gae": "gae_lambda",
+    "clip_epsilon": "clip_coef",
+    "entropy_coef": "ent_coef",
+    "value_coef": "vf_coef",
+    "num_epochs": "update_epochs",
+    "eval_episodes": "n_eval_episodes",
+}
+
+LR_ALIAS_KEYS = ("shared_lr", "policy_lr", "value_lr")
+
+
+def normalize_config(config: dict) -> dict:
+    """Accept report-friendly config names while keeping internal keys stable."""
+    config = dict(config)
+
+    for alias, target in CONFIG_ALIASES.items():
+        if alias in config and target not in config:
+            config[target] = config[alias]
+
+    if "learning_rate" not in config:
+        provided_lrs = [float(config[k]) for k in LR_ALIAS_KEYS if k in config]
+        if provided_lrs:
+            if any(abs(lr - provided_lrs[0]) > 1e-12 for lr in provided_lrs[1:]):
+                raise ValueError(
+                    "This PPO implementation uses one shared optimizer; provide "
+                    "matching policy_lr/value_lr values or use shared_lr."
+                )
+            config["learning_rate"] = provided_lrs[0]
+
+    # Keep saved configs explicit and synchronized after CLI overrides.
+    for alias, target in CONFIG_ALIASES.items():
+        if target in config:
+            config[alias] = config[target]
+    if "learning_rate" in config:
+        config["shared_lr"] = config["learning_rate"]
+
+    return config
+
+
+def assert_ppo_action_modes(agent: PPOAgent, obs_dim: int, device: torch.device) -> None:
+    """Sanity-check that rollout collection samples and evaluation is greedy."""
+    cpu_rng_state = torch.random.get_rng_state()
+    cuda_rng_states = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    try:
+        torch.manual_seed(12345)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(12345)
+
+        obs = np.zeros(obs_dim, dtype=np.float32)
+        sampled_actions = [agent.collect_step(obs)[0] for _ in range(64)]
+        assert len(set(sampled_actions)) > 1, (
+            "PPO training action selection did not produce stochastic samples. "
+            "Rollout collection must sample from Categorical(logits=logits), not argmax."
+        )
+
+        obs_t = torch.zeros((1, obs_dim), dtype=torch.float32, device=device)
+        with torch.no_grad():
+            deterministic_actions = [
+                agent.net.get_deterministic_action(obs_t).item()
+                for _ in range(8)
+            ]
+            logits, _ = agent.net(obs_t)
+            greedy_action = int(logits.argmax(dim=-1).item())
+        assert deterministic_actions == [greedy_action] * len(deterministic_actions), (
+            "Evaluation action selection must be deterministic argmax(logits)."
+        )
+    finally:
+        torch.random.set_rng_state(cpu_rng_state)
+        if cuda_rng_states is not None:
+            torch.cuda.set_rng_state_all(cuda_rng_states)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -86,6 +161,10 @@ def parse_args():
                    help="Random seed.")
     p.add_argument("--total-env-steps", type=int, default=None,
                    help="Override total_env_steps from config.")
+    p.add_argument("--eval-interval", type=int, default=None,
+                   help="Override eval_interval from config.")
+    p.add_argument("--n-eval-episodes", type=int, default=None,
+                   help="Override n_eval_episodes from config.")
     p.add_argument("--exp-name", type=str, default=None,
                    help="Override exp_name from config.")
     p.add_argument("--results-dir", type=str, default=None,
@@ -101,8 +180,12 @@ def train(config: dict, seed: int) -> None:
     """Run one training run for a given config and seed."""
 
     # ── Setup ──────────────────────────────────────────────────────────────
+    config = normalize_config(config)
     set_seed(seed)
     device = get_device(config["prefer_gpu"])
+    assert config["eval_seed_offset"] != 0, (
+        "Evaluation must use a distinct seed offset to keep train and eval environments separate."
+    )
 
     exp_name = config["exp_name"]
     results_dir = Path(config["results_dir"]) / exp_name / f"seed_{seed}"
@@ -128,6 +211,7 @@ def train(config: dict, seed: int) -> None:
         use_orthogonal_init=config["use_orthogonal_init"],
         device=device,
     )
+    assert_ppo_action_modes(agent, obs_dim, device)
 
     buffer = RolloutBuffer(
         rollout_steps=config["rollout_steps"],
@@ -238,10 +322,11 @@ def train(config: dict, seed: int) -> None:
         if eval_checkpoint > last_eval_checkpoint:
             last_eval_checkpoint = eval_checkpoint
             eval_mean, eval_std = evaluate_policy(
-                env_fn=make_env(config["env_id"], seed + 9999),
+                env_fn=make_env(config["env_id"], seed + config["eval_seed_offset"]),
                 net=agent.net,
                 n_episodes=config["n_eval_episodes"],
                 device=device,
+                seed=seed + config["eval_seed_offset"],
             )
             eval_writer.writerow([global_step, f"{eval_mean:.4f}", f"{eval_std:.4f}"])
             eval_csv.flush()
@@ -272,10 +357,15 @@ def main():
         config.update(file_cfg)
     if args.total_env_steps is not None:
         config["total_env_steps"] = args.total_env_steps
+    if args.eval_interval is not None:
+        config["eval_interval"] = args.eval_interval
+    if args.n_eval_episodes is not None:
+        config["n_eval_episodes"] = args.n_eval_episodes
     if args.exp_name is not None:
         config["exp_name"] = args.exp_name
     if args.results_dir is not None:
         config["results_dir"] = args.results_dir
+    config = normalize_config(config)
 
     train(config, seed=args.seed)
 

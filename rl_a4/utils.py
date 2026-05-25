@@ -34,8 +34,10 @@ def make_env(env_id: str = "CartPole-v1", seed: int = 0):
     """Return a callable that creates a seeded Gym environment."""
     def _thunk():
         env = __import__("gymnasium").make(env_id)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
+        if hasattr(env.action_space, "seed"):
+            env.action_space.seed(seed)
+        if hasattr(env.observation_space, "seed"):
+            env.observation_space.seed(seed)
         return env
     return _thunk
 
