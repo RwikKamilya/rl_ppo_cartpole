@@ -1,0 +1,16 @@
+final_learning_curves_comparison
+--------------------------------
+PPO_final and, when present, PPO_selected compared with DQN, REINFORCE, AC and A2C on CartPole-v1. PPO curves use deterministic greedy evaluation checkpoints; baseline curves use saved Assignment 2/3 training-return traces.
+
+ppo_ablation_curves
+-------------------
+PPO_final and ablations under the same tuned hyperparameter family. Curves show deterministic evaluation return over environment steps.
+
+ppo_diagnostics
+---------------
+Training diagnostics from PPO update logs: approximate KL, clip fraction, policy entropy and value loss.
+
+ppo_stability_summary
+---------------------
+Seed-level stability metrics: solve time, final deterministic return, post-solve worst return and worst return in the final 100k-step window.
+

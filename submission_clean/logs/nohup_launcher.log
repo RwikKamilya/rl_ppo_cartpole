@@ -1,0 +1,63 @@
+nohup: ignoring input
+study_root=/home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study
+nested_root=/home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/final_study
+[OK] nested layout not present
+[INFO] existing backup: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study_nested_backup
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/final/ppo_final/seed_0
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/final/ppo_final/seed_1
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/final/ppo_final/seed_2
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/final/ppo_final/seed_3
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/final/ppo_final/seed_4
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_final/seed_0
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_final/seed_1
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_final/seed_2
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_clip/seed_0
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_clip/seed_1
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_clip/seed_2
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_lambda0/seed_0
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_lambda0/seed_1
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_lambda0/seed_2
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_entropy/seed_0
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_entropy/seed_1
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_entropy/seed_2
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_adv_norm_on/seed_0
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_adv_norm_on/seed_1
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_adv_norm_on/seed_2
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_single_epoch/seed_0
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_single_epoch/seed_1
+[SKIP] existing complete run: /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_single_epoch/seed_2
+study_root=/home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study
+variant                     expected seeds  found complete  missing/incomplete
+------------------------------------------------------------------------------
+final/ppo_final             0,1,2,3,4       0,1,2,3,4       -                 
+ablations/ppo_final         0,1,2           0,1,2           -                 
+ablations/ppo_no_clip       0,1,2           0,1,2           -                 
+ablations/ppo_lambda0       0,1,2           0,1,2           -                 
+ablations/ppo_no_entropy    0,1,2           0,1,2           -                 
+ablations/ppo_adv_norm_on   0,1,2           0,1,2           -                 
+ablations/ppo_single_epoch  0,1,2           0,1,2           -                 
+PPO Final: loaded 5 seeds from /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/final/ppo_final
+PPO No Clip: loaded 3 seeds from /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_clip
+PPO lambda=0: loaded 3 seeds from /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_lambda0
+PPO No Entropy: loaded 3 seeds from /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_no_entropy
+PPO Adv. Norm On: loaded 3 seeds from /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_adv_norm_on
+PPO Single Epoch: loaded 3 seeds from /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/ablations/ppo_single_epoch
+DQN: loaded 5 saved baseline seeds
+REINFORCE: loaded 5 saved baseline seeds
+AC: loaded 5 saved baseline seeds
+A2C: loaded 5 saved baseline seeds
+Metrics written to /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/metrics
+| Method | n | AULC_200k | t_475 | Solve | Final | Post-worst | Late100k-worst |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PPO Final | 5 | 0.494 | 112332.800 | 100% | 500.000 | 143.050 | 397.220 |
+| PPO No Clip | 3 | 0.591 | 96768.000 | 100% | 500.000 | 215.000 | 389.533 |
+| PPO lambda=0 | 3 | 0.637 | 33792.000 | 100% | 500.000 | 127.050 | 440.717 |
+| PPO No Entropy | 3 | 0.482 | 130218.667 | 100% | 500.000 | 138.467 | 500.000 |
+| PPO Adv. Norm On | 3 | 0.459 | 80213.333 | 100% | 500.000 | 49.133 | 170.033 |
+| PPO Single Epoch | 3 | 0.472 | 93525.333 | 100% | 434.683 | 139.500 | 163.450 |
+| DQN | 5 | 0.084 | 409637.000 | 100% | 495.928 | 449.488 | 474.400 |
+| REINFORCE | 5 | 0.573 | 266653.600 | 100% | 494.402 | 399.728 | 479.792 |
+| AC | 5 | 0.158 | 412955.500 | 40% | 122.790 | 57.040 | 76.688 |
+| A2C | 5 | 0.759 | 101203.600 | 100% | 491.970 | 324.800 | 477.048 |
+
+Plots written to /home/rwik/leiden_projects/rl_ppo_cartpole/submission_clean/results/final_study/plots
